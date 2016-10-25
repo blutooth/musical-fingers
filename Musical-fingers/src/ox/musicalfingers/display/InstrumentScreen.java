@@ -1,235 +1,351 @@
 package ox.musicalfingers.display;
 
-import com.badlogic.gdx.ApplicationListener;
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input.Keys;
-import com.badlogic.gdx.audio.Sound;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL10;
-import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.Pixmap.Format;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.leapmotion.leap.Controller;
-import com.leapmotion.leap.Frame;
-import com.leapmotion.leap.Listener;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import ox.musicalfingers.instrument.DiscreteDisplay;
 import ox.musicalfingers.instrument.DiscreteInput;
+import ox.musicalfingers.instrument.DiscreteInputDisplay;
 import ox.musicalfingers.instrument.DiscreteOutput;
-import ox.musicalfingers.instrument.Piano.Piano_FiveKey;
+import ox.musicalfingers.instrument.DrumOutput;
+import ox.musicalfingers.instrument.GuitarOutput;
+import ox.musicalfingers.instrument.sampler.SamplerOutput;
+import ox.musicalfingers.instrument.FluteOutput;
+import ox.musicalfingers.instrument.Piano.Piano;
 import ox.musicalfingers.instrument.Random.FiveNotes;
-import ox.musicalfingers.leap.LeapMotion;
-import ox.musicalfingers.leap.PianoListener;
+import ox.musicalfingers.instrument.drum.Drum;
+import ox.musicalfingers.instrument.guitar.Guitar;
+import ox.musicalfingers.instrument.sampler.Sampler;
+import ox.musicalfingers.instrument.flute.Flute;
+import ox.musicalfingers.recording.Recorder;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Pixmap.Format;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.SelectBox;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.leapmotion.leap.Controller;
+import com.leapmotion.leap.Listener;
 
 public class InstrumentScreen implements Screen {
-	 //TODO: Move this stuff
-	 SpriteBatch batch;
-	 Texture texture;
-	 BitmapFont font;
+
+	// Controller for leap motion
+	Controller controller;
+	// Input processor
+	DiscreteInput input;
+	// Turns input 'notes' into sounds
+	DiscreteOutput output;
+	// Displays the instrument and fingers
+	DiscreteDisplay display;
+	// Input and display
+	DiscreteInputDisplay inputDisplay;
+	// Output for recorded notes
+	DiscreteOutput recordedOutput;
+
+	// Background texture
+	Texture rectangle;
+
+	// Recording & Playback stuff
+	Recorder recorder = new Recorder();
+	boolean recording = false;
+	boolean playingBack = false;
+	boolean repeatPlayback = true;
+	Texture rec;
+	Texture notRec;
+	Texture play;
+	Texture notPlay;
 	
-	 boolean[] taps;
-	 float x = 0;
-	 boolean recording = false;
-	 boolean playing = false;
-	 Note[] song;
-	 ConcurrentLinkedQueue<Note> queue;
-	 float t;
-    
-	 Sound sound1;
-	 Sound sound2;
-	 Sound sound3;
-	 Sound sound4;
-	 Sound sound5;
-	 //
-	 
-	 //Controller for leap motion
-	 Controller controller;
-	 //Input processor
-	 DiscreteInput input;
-	 //Turns input 'notes' into sounds
-	 DiscreteOutput output;
-	 //Displays the instrument and fingers
-	 DiscreteDisplay display;
-	 
-	 //Background texture
-	 Texture rectangle;
-	 
-	 //Stuff for drawing background notes
-	 List<Integer> noteHeights = new ArrayList<Integer>(16);
-	 int count = 0;
-	 Texture note1;
-	 Texture note2;
-	 Texture note3;
-	 Texture clef;
-    
-	 //TODO: Move this 
-	 public class Note {
-    		public int note;
-    		public float time;
-    	
-    		 public Note(int a, float b) {
-    		        note = a;
-    		       time = b;
-    		 }
-	 }
-	 
+	// UI
+	Stage stage;
+	SelectBox instruments;
+	SelectBox recordings;
+	int currentInstrument = 0;
+	int currentRecording = 0;
+	int currentSong = 0;
+	
+	// Boolean to go back to meny
+	boolean backToMenu =false;
+
 	@Override
 	public void init() {
+		
+		if(controller != null) {
+			controller.delete();
+		}
 
 		controller = new Controller();
-		input = new PianoListener();
-		output = new FiveNotes();
-		display = new Piano_FiveKey();
 		
-		controller.addListener((Listener) input);
-		
-		//For background
-		Pixmap pixmap = new Pixmap( 1,1, Format.RGBA8888 );
-		pixmap.setColor( 1,1,1,1);
+		currentInstrument = 99;
+
+		// For background
+		Pixmap pixmap = new Pixmap(1, 1, Format.RGBA8888);
+		pixmap.setColor(1, 1, 1, 1);
 		pixmap.fill();
 		rectangle = new Texture(pixmap);
 		
-		//For background notes
-		note1 = MusicalFingers.manager.get("assets/1note.png");
-		note2 = MusicalFingers.manager.get("assets/2note.png");
-		note3 = MusicalFingers.manager.get("assets/3note.png");
-		clef = MusicalFingers.manager.get("assets/clef.png");
+		//Ui elements
+		stage = new Stage();
+		Gdx.input.setInputProcessor(stage);
 		
-		for(int i=0;i<16;i++) {
-			noteHeights.add(new Random().nextInt(MusicalFingers.height-40));
+		Skin skin = MusicalFingers.manager.get("assets/ui/pixelSkin.json");
+		
+		skin.getFont("default").setScale(1f);
+		
+		/*
+		Table toolbar = new Table();
+		toolbar.setPosition(0, MusicalFingers.height-100f);
+		toolbar.setWidth(MusicalFingers.width);
+		toolbar.setHeight(100f);
+		//For background of table
+		pixmap = new Pixmap(1, 1, Format.RGBA8888);
+		pixmap.setColor(0.5f, 0.5f, 0.5f, 1);
+		pixmap.fill();
+		Texture tempTexture = new Texture(pixmap);
+		TextureRegionDrawable t = new TextureRegionDrawable(new TextureRegion(tempTexture));
+		toolbar.setBackground(t);		
+		*/
+		
+		TextButton back = new TextButton("back", skin, "small");
+		back.setWidth(100f);
+		back.setHeight(100f);
+		back.setPosition(5, MusicalFingers.height-105f);
+		back.addListener(new ClickListener() { 
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+				backToMenu=true;
+			}
 		}
+		);
+
+		final TextButton record = new TextButton("record", skin, "small");
+		record.setWidth(150f);
+		record.setHeight(100f);
+		record.setPosition(MusicalFingers.width/3f-200, MusicalFingers.height-105f);
+		record.addListener(new ClickListener() { 
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+				if(!playingBack){
+					if(recording) {
+						record.setText("record");
+					} else {
+						recorder.startRecording(output);
+						record.setText("stop");
+						
+						if(instruments.getSelectionIndex() == 0) {
+							//Piano
+							recordedOutput = new FiveNotes();
+						} else if(instruments.getSelectionIndex() == 1) {
+							//Guitar
+							recordedOutput = new GuitarOutput();
+						} else if(instruments.getSelectionIndex() == 2) {
+							//Drum
+							recordedOutput = new DrumOutput();
+						} else if(instruments.getSelectionIndex() == 3) {
+							// Sampler
+							recordedOutput = new SamplerOutput();
+						} else if(instruments.getSelectionIndex() == 4) {
+							// flute
+							recordedOutput = new FluteOutput();
+						}
+	
+					}
+					recording = !recording;
+				}
+			}
+		}
+		);
 		
-		//TEMP 
-		//For recording
-    	sound1 = Gdx.audio.newSound(Gdx.files.internal("assets/sound1.mp3"));
-    	sound2 = Gdx.audio.newSound(Gdx.files.internal("assets/sound2.mp3"));
-    	sound3 = Gdx.audio.newSound(Gdx.files.internal("assets/sound3.mp3"));
-    	sound4 = Gdx.audio.newSound(Gdx.files.internal("assets/sound4.mp3"));
-    	sound5 = Gdx.audio.newSound(Gdx.files.internal("assets/sound5.mp3"));
-    	
+		final TextButton playButton = new TextButton("play", skin, "small");
+		playButton.setWidth(150f);
+		playButton.setHeight(100f);
+		playButton.setPosition(MusicalFingers.width/3f+50f, MusicalFingers.height-105f);
+		playButton.addListener(new ClickListener() { 
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+				if(!recording) {
+					if(playingBack) {
+						playButton.setText("play");
+					} else {
+						recorder.startPlaying();
+						playButton.setText("stop");
+					}
+					playingBack = !playingBack;
+				}
+			}
+		}
+		);
 		
+		String[] instrumentNames = {"     piano", "     guitar", "      drum", "     sampler", "     flute"};
+		
+		instruments = new SelectBox(instrumentNames, skin);
+		instruments.setPosition(MusicalFingers.width-325f, MusicalFingers.height-100f-5f);
+		instruments.setWidth(320f);
+		instruments.setHeight(100f);	
+		
+		String[] recordingNames = {"     track  1"	, "     track  2" , "     track  3" , "     track  4" , "     track  5"	, "     track  6" , "     track  7" , "     track  8" , "     track  9"}	;					
+		
+		recordings = new SelectBox (recordingNames, skin);
+		recordings.setPosition(MusicalFingers.width-555f-50f , MusicalFingers.height-105f);
+		recordings.setWidth(250f);
+		recordings.setHeight(100f);
+		
+		stage.addActor(instruments);
+		stage.addActor(recordings);
+		stage.addActor(playButton);
+		stage.addActor(record);
+		stage.addActor(back);
+		
+		//Ui images
+		notRec = MusicalFingers.manager.get("assets/notRecording.png");
+		rec = MusicalFingers.manager.get("assets/recording.png");
+		notPlay = MusicalFingers.manager.get("assets/notPlaying.png");
+		play = MusicalFingers.manager.get("assets/playing.png");
+		
+		backToMenu = false;
+		
+		recording = false;
+		playingBack = false;
+	
 	}
 
 	@Override
 	public void update() {
 		
-		output.playNotes(input.getNotes());
-		display.getNotes(input.getNotes());
-		display.getFingers(controller.frame().fingers());
-		
-
-		//Update background images
-		count++;
-		if(count>noteHeights.size()*100) {
-			count = 0;
+		//Change instruments?
+		if(currentInstrument != instruments.getSelectionIndex()) {
+			
+			if(inputDisplay!=null) {
+				controller.removeListener((Listener) inputDisplay);
+			}
+			
+			if(instruments.getSelectionIndex() == 0) {
+				//Piano
+				output = new FiveNotes();
+				inputDisplay = new Piano();
+			} else if(instruments.getSelectionIndex() == 1) {
+				//Guitar
+				output = new GuitarOutput();
+				inputDisplay = new Guitar();
+			} else if(instruments.getSelectionIndex() == 2) {
+				//Drum
+				output = new DrumOutput();
+				inputDisplay = new Drum();
+			} else if(instruments.getSelectionIndex() == 3) {
+				//Sampler
+				output = new SamplerOutput();
+				inputDisplay = new Sampler();
+			} else if(instruments.getSelectionIndex() == 4) {
+				//Flute
+				output = new FluteOutput();
+				inputDisplay = new Flute();
+			}
+			
+			controller.addListener((Listener) inputDisplay);
+			currentInstrument = instruments.getSelectionIndex();
 		}
 		
-		//TODO: Move recording stuff to its own class
-		    	 	
-	 	if ((Gdx.input.isKeyPressed(Keys.SPACE)) && !recording && !playing) {
-			 t = System.nanoTime();
-			 queue = new ConcurrentLinkedQueue<Note>();
-			 recording = true;
+		//Change song?
+		if(currentSong != recordings.getSelectionIndex()) {
+			//Song changed
+			recorder.changeToSong(recordings.getSelectionIndex());
+			
+			if(recording) {
+				recorder.startRecording(output);
+			}
+			if(playingBack) {
+				recorder.startPlaying();
+			}
+			
+			currentSong = recordings.getSelectionIndex();
+			
+			recordedOutput = recorder.getInstrumentForPlayback();
 		}
-		 
-		if ((Gdx.input.isKeyPressed(Keys.DOWN)) && recording) {
-			 song = queue.toArray(new Note[0]);
-			 recording = false;
-	 	}
-	 
-		if ((Gdx.input.isKeyPressed(Keys.UP)) && !recording && !playing) {
-			 playing = true;
-			 
-			 timer = System.nanoTime();
-			// playback(song);
-	 	}
-		if(playing) playback(song);
-    }
 
-	@Override
-	public void draw(SpriteBatch batch) {
 		
-		batch.setColor(147,210,255,1);
-		batch.draw(rectangle,0,0,MusicalFingers.width,MusicalFingers.height);
+		//Instruments 
+		output.playNotes(inputDisplay.getNotes());
 		
-		//Some notes in the background
-		for(int i=0;i<noteHeights.size();i++) {
-			if(i%4==0) {
-				batch.draw(clef,MusicalFingers.width-(((i*100)+count)%(noteHeights.size()*100)),noteHeights.get(i),clef.getWidth()*4f,clef.getHeight()*4f);
-			} else if(i%4==1) {
-				batch.draw(note1,MusicalFingers.width-(((i*100)+count)%(noteHeights.size()*100)),noteHeights.get(i),note1.getWidth()*4f,note1.getHeight()*4f);
-			} else if(i%4==2) {
-				batch.draw(note2,MusicalFingers.width-(((i*100)+count)%(noteHeights.size()*100)),noteHeights.get(i),note2.getWidth()*4f,note2.getHeight()*4f);
+		//display.getNotes(input.getNotes());
+		//display.getFingers(controller.frame().fingers());
+		//display.getInteractionBox(controller.frame().interactionBox());}
+
+		//Recording and playback
+		
+		if (recording) {
+			recorder.recordNotes(inputDisplay.getNotes());
+		}
+
+		if (playingBack) {
+			if(!recorder.endOfRecording()) {
+				recordedOutput.playNotes(recorder.playNotes());
 			} else {
-				//batch.draw(note3,MusicalFingers.width-(((i*100)+count)%(noteHeights.size()*100)),noteHeights.get(i));
-				batch.draw(note3,MusicalFingers.width-(((i*100)+count)%(noteHeights.size()*100)),noteHeights.get(i),note3.getWidth()*4f,note3.getHeight()*4f);
+				if(repeatPlayback) {
+					recorder.startPlaying();
+				}
 			}
 		}
 		
-		display.draw(batch);
+		//Update ui
+		stage.act();
 		
+	}
+
+	@Override
+	public void draw(SpriteBatch batch) {
+
+		// batch.setColor(147,210,255,1);
+		// batch.draw(rectangle,0,0,MusicalFingers.width,MusicalFingers.height);
+
+		//Draw instrument
+		inputDisplay.draw(batch);
+		
+		//Draw rectangle under toolbar
+		batch.setColor(200f/255f,200f/255f,200f/255f,1);
+		batch.draw(rectangle,0,MusicalFingers.height-110f,MusicalFingers.width,110f);
+		batch.setColor(Color.BLACK);
+		batch.draw(rectangle,0,MusicalFingers.height-115f,MusicalFingers.width,5f);
+		
+		batch.setColor(Color.WHITE);
+		//Draw some ui images
+		if(recording) {
+			batch.draw(rec,MusicalFingers.width/3f-250f,MusicalFingers.height-75,40f,40f);
+		} else {
+			batch.draw(notRec,MusicalFingers.width/3f-250f,MusicalFingers.height-75,40f,40f);
+		}
+		if(playingBack) {
+			batch.draw(play,MusicalFingers.width/3f,MusicalFingers.height-88f,42f,66f);
+		} else {
+			batch.draw(notPlay,MusicalFingers.width/3f,MusicalFingers.height-88f,42f,66f);
+		}
+		
+		//Draw ui
+		batch.end();
+		stage.draw();
+		batch.begin();
+
 	}
 
 	@Override
 	public int changeStateTo() {
-		return -1;
+		if(backToMenu) { 
+			return MusicalFingers.STATE_MENU;
+		} else {
+			return -1;
+		}
 	}
 
 	@Override
 	public void dispose() {
-		texture.dispose();
-		font.dispose();
+		stage.dispose();
+		
 	}
-	
-	
-	public void playnote(boolean[] notes) {
-    		//if (recording==true) {System.out.println("Recorded"); queue.add(new Note(x,(System.nanoTime()-t)));}
-    		//s.stop(); 
-    		//s.play();
-		for(int i=0; i< 5;i++) {
-			if(notes[i]) {
-				queue.add(new Note(i,System.nanoTime()-t));
-			}
-		}
-	 }
-	 float timer = 0;
-	 int i = 0;
-    
-    	public void playback(Note[] a) {
-    		//float t = System.nanoTime();
-    		int n = a.length;
-    		//int i = 0;
-    		int note = 0;
-	    	float time = 0;
-	    	if(i < n) {
-    			note = (a[i]).note;
-    			time = (a[i]).time;
-    			if(System.nanoTime()-timer >= time) {
-    				if(note==0) {sound1.stop(); sound1.play();}
-        			else if(note==1)  {sound2.stop(); sound2.play();}
-        			else if(note==2)  {sound3.stop(); sound3.play();}
-        			else if(note==3) {sound4.stop(); sound4.play();}
-        			else  {sound5.stop(); sound5.play();}
-    				i++;
-    			}
-    			/*
-    			if(note==1)  playnote(1,sound1);
-    			else if(note==2)  playnote(2,sound2);
-    			else if(note==3)  playnote(3,sound3);
-    			else if(note==4)  playnote(4,sound4);
-    			else  playnote(5,sound5);
-    			i++;
-    			*/
-    		}
-	    	
-    		if(i==n) {playing = false; i = 0;}
-    	}
 
 }

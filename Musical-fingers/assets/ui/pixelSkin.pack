@@ -1,0 +1,54 @@
+
+pixelSkin.png
+format: RGBA8888
+filter: Nearest,Nearest
+repeat: none
+pixel
+  rotate: false
+  xy: 1, 25
+  size: 512, 512
+  orig: 512, 512
+  offset: 0, 0
+  index: -1
+select
+  rotate: false
+  xy: 1, 13
+  size: 25, 10
+  orig: 25, 10
+  offset: 0, 0
+  index: -1
+selectOver
+  rotate: false
+  xy: 515, 527
+  size: 25, 10
+  orig: 25, 10
+  offset: 0, 0
+  index: -1
+buttonDown
+  rotate: false
+  xy: 1, 1
+  size: 20, 10
+  orig: 20, 10
+  offset: 0, 0
+  index: -1
+buttonOver
+  rotate: false
+  xy: 28, 13
+  size: 20, 10
+  orig: 20, 10
+  offset: 0, 0
+  index: -1
+buttonUp
+  rotate: false
+  xy: 515, 515
+  size: 20, 10
+  orig: 20, 10
+  offset: 0, 0
+  index: -1
+white
+  rotate: false
+  xy: 542, 536
+  size: 1, 1
+  orig: 1, 1
+  offset: 0, 0
+  index: -1

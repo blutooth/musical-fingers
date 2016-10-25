@@ -10,14 +10,23 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.leapmotion.leap.Finger;
 import com.leapmotion.leap.FingerList;
+import com.leapmotion.leap.InteractionBox;
+import com.leapmotion.leap.Vector;
+
 
 import ox.musicalfingers.display.MusicalFingers;
 import ox.musicalfingers.instrument.DiscreteDisplay;
+import ox.musicalfingers.instrument.KeyPos;
+
+
+
 
 public class Piano_FiveKey implements DiscreteDisplay{
 	
+	private KeyPos [] keyPos = new KeyPos[5];
 	private boolean[] keys = new boolean[5];
 	private FingerList fingers;
+	private InteractionBox iBox;
 	
 	Texture rectangle;
 	Texture circle;
@@ -43,6 +52,24 @@ public class Piano_FiveKey implements DiscreteDisplay{
 		fingerPoint = MusicalFingers.manager.get("assets/finger.png");
 		
 		scaleFactor = ((MusicalFingers.width/160)-2);
+		
+		for(int i=0;i<5;i++) {
+				float z=1;
+				float x=160+(i*32)*scaleFactor*z;
+				float y=120+2*scaleFactor*z;
+				float width=32*scaleFactor*z;
+				float height=67*scaleFactor*z;
+				keyPos[i]= new KeyPos(x/MusicalFingers.width, y/MusicalFingers.height, width/MusicalFingers.width, 
+						height/MusicalFingers.height);
+		}
+	}
+	
+	@Override
+	public int FindKey(Float x, Float y) {
+		for(int i=0;i<5;i++) {
+			if (keyPos[i].isInRange(x, y)) {return i;}
+		}
+		return -1;
 	}
 
 	@Override
@@ -59,6 +86,13 @@ public class Piano_FiveKey implements DiscreteDisplay{
 		
 	}
 
+	
+	@Override
+	public void getInteractionBox(InteractionBox iBox) {
+		this.iBox = iBox;
+		
+	}
+	
 	@Override
 	public void draw(SpriteBatch batch) {
 		
@@ -89,13 +123,26 @@ public class Piano_FiveKey implements DiscreteDisplay{
 		batch.setColor(0f,0f,0f,0.5f);
 		for(int i=0;i<5;i++) {
 			if(keys[i]) {
-				batch.draw(rectangle,160+(i*32)*scaleFactor,120+2*scaleFactor,32*scaleFactor,67*scaleFactor);
+				float z=1;
+				float x=160+(i*32)*scaleFactor*z;
+				float y=120+2*scaleFactor*z;
+				float width=32*scaleFactor*z;
+				float height=67*scaleFactor*z;
+				
+				batch.draw(rectangle,x,y,width,height);
 			}
 		}
 		
 		batch.setColor(Color.WHITE);
 		for(Finger finger : fingers) {
-			batch.draw(fingerPoint,finger.tipPosition().getX()-32,finger.tipPosition().getY()-32,64,64);
+			
+	        Vector Position = finger.tipPosition();
+	        Vector nPos = iBox.normalizePoint(Position);
+
+			batch.draw(fingerPoint,nPos.getX()*MusicalFingers.width-6,(1f-nPos.getZ())*MusicalFingers.height-6,12,12);
+			//batch.draw(fingerPoint,finger.tipPosition().getX()*scaleFactor*160-32,finger.tipPosition().getY()*scaleFactor*80-32,64,64);
+			//batch.draw(circle,(finger.tipPosition().getX()-8)*(5)+640,finger.tipPosition().getZ()+300-8);
+;
 		}
 		
 	}

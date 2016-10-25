@@ -1,0 +1,22 @@
+{
+        com.badlogic.gdx.graphics.g2d.BitmapFont: {  
+                default: { file: pixel.fnt, setScale: 2 }
+        }, 
+        com.badlogic.gdx.scenes.scene2d.ui.Skin$TintedDrawable: {
+                gray: { name: white, color: { r: 0.5, g: 0.5, b: 0.5, a: 1 } },
+                light-gray: { name: white, color: { r: 0.3, g: 0.4, b: 0.4, a: 1 } },
+                black: { name: white, color: { r: 0, g: 0, b: 0, a: 1 } },
+                red: { name: white, color: { r: 1, g: 0, b: 0, a: 1 } },
+                orange: { name: white, color: { r: 1, g: 0.415, b: 0, a: 1 } }
+        },
+        com.badlogic.gdx.scenes.scene2d.ui.TextButton$TextButtonStyle: {  
+                default: { up: buttonUp, down: buttonDown, over: buttonOver, font: default, pressedOffsetY: 0, unpressedOffsetY: 20 },  
+                small: { up: buttonUp, down: buttonDown, over: buttonOver, font: default, pressedOffsetY: 0, unpressedOffsetY: 10}
+        },
+        com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle: {
+                default: {font: default}
+        },
+        com.badlogic.gdx.scenes.scene2d.ui.SelectBox$SelectBoxStyle: {
+                default: { font: default, background: select, backgroundOver: selectOver,backgroundOpen: selectOver, scrollStyle: { background: red }, listStyle: { font: default, selection: black} }
+        }
+ }

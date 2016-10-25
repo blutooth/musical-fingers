@@ -1,5 +1,6 @@
 package ox.musicalfingers.display;
 
+import com.badlogic.gdx.Files;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplication;
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 
@@ -13,6 +14,8 @@ public class Main {
 		//Fixed Size Window
 		config.width = 1280;
 		config.height = 800;
+		config.addIcon("assets/icon.png", Files.FileType.Internal);
+		//config.resizable = false;
 		//Fullscreen
 		//config.fullscreen=true;
 		
